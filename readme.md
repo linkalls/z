@@ -200,4 +200,4 @@ try {
 
 楽しいAPIライフを！ 🎈 
 
-より詳しい情報は[GitHubリポジトリ](https://github.com/yourusername/z)をチェックしてね！ 🌟
+より詳しい情報は[GitHubリポジトリ](https://github.com/linkalls/z)をチェックしてね！ 🌟
