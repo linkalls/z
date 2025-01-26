@@ -13,7 +13,7 @@ Deno.test("Zクラスのgetメソッド", async () => {
     const mockResponse = { title: "mock title" };
     mockFetch(mockResponse);
     const result = await z.get("/todos/1");
-    assertEquals(result, mockResponse);
+    assertEquals(result.data, mockResponse);
 });
 // Zクラスのpostメソッドのテスト
 Deno.test("Zクラスのpostメソッド", async () => {
@@ -21,7 +21,7 @@ Deno.test("Zクラスのpostメソッド", async () => {
     const mockResponse = { title: "mock title" };
     mockFetch(mockResponse);
     const result = await z.post("/todos", { title: "mock title" });
-    assertEquals(result, mockResponse);
+    assertEquals(result.data, mockResponse);
 });
 // Zクラスのputメソッドのテスト
 Deno.test("Zクラスのputメソッド", async () => {
@@ -29,7 +29,7 @@ Deno.test("Zクラスのputメソッド", async () => {
     const mockResponse = { title: "mock title" };
     mockFetch(mockResponse);
     const result = await z.put("/todos/1", { title: "updated title" });
-    assertEquals(result, mockResponse);
+    assertEquals(result.data, mockResponse);
 });
 // Zクラスのdeleteメソッドのテスト
 Deno.test("Zクラスのdeleteメソッド", async () => {
@@ -37,7 +37,7 @@ Deno.test("Zクラスのdeleteメソッド", async () => {
     const mockResponse = { success: true };
     mockFetch(mockResponse);
     const result = await z.delete("/todos/1");
-    assertEquals(result, mockResponse);
+    assertEquals(result.data, mockResponse);
 });
 // Zクラスのpatchメソッドのテスト
 Deno.test("Zクラスのpatchメソッド", async () => {
@@ -45,7 +45,7 @@ Deno.test("Zクラスのpatchメソッド", async () => {
     const mockResponse = { title: "patched title" };
     mockFetch(mockResponse);
     const result = await z.patch("/todos/1", { title: "patched title" });
-    assertEquals(result, mockResponse);
+    assertEquals(result.data, mockResponse);
 });
 // Zクラスのrequestメソッドが失敗時にエラーをスローするテスト
 Deno.test("Zクラスのrequestメソッドの失敗時の動作", async () => {

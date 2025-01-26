@@ -10,7 +10,7 @@ export class Z {
      * @param options リクエストオプション
      */
     constructor(baseUrl = "", options = {}) {
-        this.baseUrl = baseUrl;
+        this.baseUrl = new URL(baseUrl);
         this.options = options;
     }
     /**
@@ -36,7 +36,7 @@ export class Z {
         return await this.request(url, {
             method: "POST",
             headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
             ...options,
@@ -53,7 +53,7 @@ export class Z {
         return await this.request(url, {
             method: "PUT",
             headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
             ...options,
@@ -82,7 +82,7 @@ export class Z {
         return await this.request(url, {
             method: "PATCH",
             headers: {
-                'Content-Type': 'application/json'
+                "Content-Type": "application/json",
             },
             body: JSON.stringify(body),
             ...options,
@@ -95,16 +95,23 @@ export class Z {
      * @returns レスポンスデータ
      */
     async request(url, options = {}) {
-        const result = await fetch(this.baseUrl + url, {
+        const result = await fetch(new URL(url, this.baseUrl).toString(), {
             ...this.options,
             ...options,
         });
         if (result.ok) {
-            return result.json();
+            const res = responseMaker(await result.json(), result);
+            return res;
         }
         else {
             throw new Error(`Request failed with status ${result.status}: ${await result.text()}`);
         }
     }
+}
+function responseMaker(data, response) {
+    return {
+        data: data,
+        response: response,
+    };
 }
 //# sourceMappingURL=main.js.map
