@@ -23,13 +23,14 @@ API のベース URL を設定しておくと、毎回フル URL を書く必要
 ```typescript
 // Before 😫
 const user = await fetch("https://api.example.com/users/1").then((r) =>
- console.log(r.data.user); // 😫
+  r.json()
 );
 const post = await fetch("https://api.example.com/posts/1").then((r) =>
- console.log(r.data.post); // 😫
+  r.json()
 );
 const comment = await fetch("https://api.example.com/comments/1")
-console.log(comment.data.comment); // 😫
+  .then((r) => r.json())
+  .catch((e) => console.error(e));
 
 // After with Z 😊
 const z = new Z("https://api.example.com");
