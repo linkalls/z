@@ -129,6 +129,64 @@ await z.delete("/todos/1");
 - **軽量**: 外部依存関係がないので、バンドルサイズを気にする必要なし！
 - **モダン**: JavaScript の Fetch API をベースにしているので、モダンブラウザで快適に動作！
 
+### fetch / axios との比較 📊
+
+#### vs 素の Fetch API
+
+| 機能 | 素の Fetch | Z |
+|------|-----------|---|
+| **ベース URL** | ❌ 毎回フル URL を書く必要がある | ✅ ベース URL を一度設定すれば OK |
+| **デフォルトヘッダー** | ❌ 毎回設定が必要 | ✅ コンストラクタで一度設定 |
+| **JSON 処理** | ❌ 手動で `JSON.stringify()` / `.json()` | ✅ 自動的に処理 |
+| **型安全性** | ❌ レスポンスの型が any | ✅ TypeScript ジェネリクスで完全な型安全性 |
+| **エラーハンドリング** | ❌ `.ok` チェックを毎回書く必要がある | ✅ 自動的にエラーをスロー |
+| **バンドルサイズ** | ✅ 0KB（標準 API） | ✅ 約 1KB（最小限） |
+
+```typescript
+// Fetch の場合 😫
+const response = await fetch('https://api.example.com/users/1', {
+  headers: {
+    'Authorization': 'Bearer token',
+    'Content-Type': 'application/json'
+  }
+});
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+const user = await response.json();
+
+// Z の場合 😊
+const z = new Z('https://api.example.com', {
+  headers: { 'Authorization': 'Bearer token' }
+});
+const { data: user } = await z.get<User>('/users/1');
+```
+
+#### vs Axios
+
+| 機能 | Axios | Z |
+|------|-------|---|
+| **バンドルサイズ** | ❌ 約 13KB（gzip 後） | ✅ 約 1KB |
+| **依存関係** | ❌ 複数の依存関係あり | ✅ ゼロ依存 |
+| **ブラウザサポート** | ✅ 広範なサポート（IE11 含む） | ✅ モダンブラウザ（Fetch API サポート必須） |
+| **TypeScript サポート** | ⚠️ 型定義ファイルが必要 | ✅ TypeScript ネイティブ |
+| **AbortController** | ✅ サポート | ✅ ネイティブサポート |
+| **インターセプター** | ✅ リクエスト/レスポンスインターセプター | ❌ なし（シンプルさを優先） |
+| **進捗イベント** | ✅ アップロード/ダウンロード進捗 | ❌ なし（シンプルさを優先） |
+| **自動リトライ** | ❌ プラグインが必要 | ❌ なし（必要に応じて実装） |
+
+**Z が最適な場合:**
+- 🎯 **シンプルな REST API クライアント**が必要な場合
+- 📦 **バンドルサイズを最小限**に抑えたい場合
+- 🚀 **モダンブラウザ専用**のアプリケーション
+- ✨ **TypeScript で型安全性**を重視する場合
+- 🪶 **依存関係を増やしたくない**場合
+
+**Axios が最適な場合:**
+- 🔧 **高度な機能**（インターセプター、進捗トラッキング）が必要な場合
+- 🌐 **IE11 などの古いブラウザ**をサポートする必要がある場合
+- 📊 **複雑なリクエスト処理**が必要な場合
+
 ## インストール 📦
 
 ```bash
@@ -449,6 +507,64 @@ function UserProfile({ userId }: { userId: number }) {
 - **Lightweight**: No external dependencies means smaller bundle size
 - **Modern**: Built on JavaScript's Fetch API for optimal browser support
 - **Production-ready**: AbortController support for commercial applications
+
+### Comparison with fetch / axios 📊
+
+#### vs Native Fetch API
+
+| Feature | Native Fetch | Z |
+|---------|-------------|---|
+| **Base URL** | ❌ Must write full URL every time | ✅ Set once in constructor |
+| **Default Headers** | ❌ Must set for each request | ✅ Set once in constructor |
+| **JSON Handling** | ❌ Manual `JSON.stringify()` / `.json()` | ✅ Automatic |
+| **Type Safety** | ❌ Response type is any | ✅ Full type safety with generics |
+| **Error Handling** | ❌ Must check `.ok` every time | ✅ Automatically throws on error |
+| **Bundle Size** | ✅ 0KB (standard API) | ✅ ~1KB (minimal) |
+
+```typescript
+// With Fetch 😫
+const response = await fetch('https://api.example.com/users/1', {
+  headers: {
+    'Authorization': 'Bearer token',
+    'Content-Type': 'application/json'
+  }
+});
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+const user = await response.json();
+
+// With Z 😊
+const z = new Z('https://api.example.com', {
+  headers: { 'Authorization': 'Bearer token' }
+});
+const { data: user } = await z.get<User>('/users/1');
+```
+
+#### vs Axios
+
+| Feature | Axios | Z |
+|---------|-------|---|
+| **Bundle Size** | ❌ ~13KB (gzipped) | ✅ ~1KB |
+| **Dependencies** | ❌ Multiple dependencies | ✅ Zero dependencies |
+| **Browser Support** | ✅ Wide support (including IE11) | ✅ Modern browsers (Fetch API required) |
+| **TypeScript Support** | ⚠️ Requires type definitions | ✅ Native TypeScript |
+| **AbortController** | ✅ Supported | ✅ Native support |
+| **Interceptors** | ✅ Request/Response interceptors | ❌ None (simplicity first) |
+| **Progress Events** | ✅ Upload/Download progress | ❌ None (simplicity first) |
+| **Auto Retry** | ❌ Requires plugin | ❌ None (implement if needed) |
+
+**Z is best when you need:**
+- 🎯 **Simple REST API client** without complexity
+- 📦 **Minimal bundle size** for better performance
+- 🚀 **Modern browser-only** applications
+- ✨ **Type safety** with TypeScript
+- 🪶 **Zero dependencies** in your project
+
+**Axios is best when you need:**
+- 🔧 **Advanced features** (interceptors, progress tracking)
+- 🌐 **Old browser support** (IE11, etc.)
+- 📊 **Complex request processing** with transformations
 
 ## API Reference 📚
 
