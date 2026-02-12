@@ -2,6 +2,8 @@
 
 こんにちは！超軽量な Fetch ベースの HTTP クライアント「Z」へようこそ！ ✨
 
+**[English Documentation Below](#english-documentation)** 🌐
+
 ## なにができるの？ 🤔
 
 Z は本当にシンプルで使いやすい HTTP クライアントです！TypeScript で書かれているので、型安全性もバッチリです！API との通信がもっと楽しくなること間違いなし！📱✨
@@ -12,7 +14,8 @@ Z は本当にシンプルで使いやすい HTTP クライアントです！Typ
 - 🪶 超軽量（依存関係ゼロ！）
 - 🎯 シンプルで直感的な API
 - ⚡ Fetch ベースで高速
-- � カスタマイズ可能なデフォルトオプション
+- 🎛️ カスタマイズ可能なデフォルトオプション
+- 🛑 **AbortController サポート（商用利用に対応）**
 
 ## おすすめの使い方 🌈
 
@@ -126,6 +129,64 @@ await z.delete("/todos/1");
 - **軽量**: 外部依存関係がないので、バンドルサイズを気にする必要なし！
 - **モダン**: JavaScript の Fetch API をベースにしているので、モダンブラウザで快適に動作！
 
+### fetch / axios との比較 📊
+
+#### vs 素の Fetch API
+
+| 機能 | 素の Fetch | Z |
+|------|-----------|---|
+| **ベース URL** | ❌ 毎回フル URL を書く必要がある | ✅ ベース URL を一度設定すれば OK |
+| **デフォルトヘッダー** | ❌ 毎回設定が必要 | ✅ コンストラクタで一度設定 |
+| **JSON 処理** | ❌ 手動で `JSON.stringify()` / `.json()` | ✅ 自動的に処理 |
+| **型安全性** | ❌ レスポンスの型が any | ✅ TypeScript ジェネリクスで完全な型安全性 |
+| **エラーハンドリング** | ❌ `.ok` チェックを毎回書く必要がある | ✅ 自動的にエラーをスロー |
+| **バンドルサイズ** | ✅ 0KB（標準 API） | ✅ 約 1KB（最小限） |
+
+```typescript
+// Fetch の場合 😫
+const response = await fetch('https://api.example.com/users/1', {
+  headers: {
+    'Authorization': 'Bearer token',
+    'Content-Type': 'application/json'
+  }
+});
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+const user = await response.json();
+
+// Z の場合 😊
+const z = new Z('https://api.example.com', {
+  headers: { 'Authorization': 'Bearer token' }
+});
+const { data: user } = await z.get<User>('/users/1');
+```
+
+#### vs Axios
+
+| 機能 | Axios | Z |
+|------|-------|---|
+| **バンドルサイズ** | ❌ 約 13KB（gzip 後） | ✅ 約 1KB |
+| **依存関係** | ❌ 複数の依存関係あり | ✅ ゼロ依存 |
+| **ブラウザサポート** | ✅ 広範なサポート（IE11 含む） | ✅ モダンブラウザ（Fetch API サポート必須） |
+| **TypeScript サポート** | ⚠️ 型定義ファイルが必要 | ✅ TypeScript ネイティブ |
+| **AbortController** | ✅ サポート | ✅ ネイティブサポート |
+| **インターセプター** | ✅ リクエスト/レスポンスインターセプター | ❌ なし（シンプルさを優先） |
+| **進捗イベント** | ✅ アップロード/ダウンロード進捗 | ❌ なし（シンプルさを優先） |
+| **自動リトライ** | ❌ プラグインが必要 | ❌ なし（必要に応じて実装） |
+
+**Z が最適な場合:**
+- 🎯 **シンプルな REST API クライアント**が必要な場合
+- 📦 **バンドルサイズを最小限**に抑えたい場合
+- 🚀 **モダンブラウザ専用**のアプリケーション
+- ✨ **TypeScript で型安全性**を重視する場合
+- 🪶 **依存関係を増やしたくない**場合
+
+**Axios が最適な場合:**
+- 🔧 **高度な機能**（インターセプター、進捗トラッキング）が必要な場合
+- 🌐 **IE11 などの古いブラウザ**をサポートする必要がある場合
+- 📊 **複雑なリクエスト処理**が必要な場合
+
 ## インストール 📦
 
 ```bash
@@ -206,6 +267,365 @@ try {
 }
 ```
 
+### リクエストのキャンセル（AbortController） 🛑
+
+商用アプリケーションでは、ユーザーがページを離れた時やタイムアウト時にリクエストをキャンセルする必要があります。Z は AbortController を完全にサポートしています！
+
+#### 基本的な使い方
+
+```typescript
+const z = new Z("https://api.example.com");
+const controller = new AbortController();
+
+// ボタンクリックなどでキャンセル可能に
+document.getElementById("cancel-btn").addEventListener("click", () => {
+  controller.abort();
+});
+
+try {
+  const result = await z.get("/slow-endpoint", { signal: controller.signal });
+  console.log(result.data);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('リクエストがキャンセルされました！');
+  }
+}
+```
+
+#### タイムアウトの設定
+
+```typescript
+import Z, { createTimeout } from "@ptt/zz";
+
+const z = new Z("https://api.example.com");
+
+// 5秒でタイムアウト
+const controller = createTimeout(5000);
+
+try {
+  const result = await z.get("/slow-endpoint", { signal: controller.signal });
+  console.log(result.data);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('リクエストがタイムアウトしました！');
+  }
+}
+```
+
+#### 実践的な例：React での使用
+
+```typescript
+import { useEffect, useState } from 'react';
+import Z from '@ptt/zz';
+
+function UserProfile({ userId }: { userId: number }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const z = new Z("https://api.example.com");
+    const controller = new AbortController();
+
+    async function fetchUser() {
+      try {
+        const { data } = await z.get(`/users/${userId}`, { 
+          signal: controller.signal 
+        });
+        setUser(data);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch user:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+
+    // コンポーネントがアンマウントされたらリクエストをキャンセル
+    return () => controller.abort();
+  }, [userId]);
+
+  if (loading) return <div>読み込み中...</div>;
+  return <div>{user?.name}</div>;
+}
+```
+
 楽しい API ライフを！ 🎈
 
 より詳しい情報は[GitHub リポジトリ](https://github.com/linkalls/z)をチェックしてね！ 🌟
+
+---
+
+# English Documentation
+
+## Z 🚀
+
+Welcome to **Z**, an ultra-lightweight Fetch-based HTTP client! ✨
+
+## Features 🌟
+
+Z is a simple and easy-to-use HTTP client written in TypeScript for complete type safety. Making API communication fun and reliable!
+
+Key features:
+
+- 💪 **Full TypeScript support** - Type-safe requests and responses
+- 🪶 **Ultra-lightweight** - Zero dependencies!
+- 🎯 **Simple & intuitive API** - Easy to learn and use
+- ⚡ **Fast** - Built on the modern Fetch API
+- 🎛️ **Customizable defaults** - Set base URLs and default headers
+- 🛑 **AbortController support** - Production-ready request cancellation
+
+## Installation 📦
+
+```bash
+npx jsr add @ptt/zz
+```
+
+## Quick Start 🚀
+
+```typescript
+import Z from "@ptt/zz";
+
+// Create a client
+const z = new Z("https://api.example.com", {
+  headers: { Authorization: "Bearer token" },
+});
+
+// Make a GET request
+interface Todo {
+  id: number;
+  title: string;
+  completed: boolean;
+}
+
+const { data: todo } = await z.get<Todo>("/todos/1");
+console.log(todo.title); // TypeScript autocomplete works!
+
+// Make a POST request
+const { data: newTodo } = await z.post<Todo>("/todos", {
+  title: "New task",
+  completed: false,
+});
+
+// Other methods work similarly
+await z.put<Todo>("/todos/1", { completed: true });
+await z.patch<Todo>("/todos/1", { title: "Updated task" });
+await z.delete("/todos/1");
+```
+
+## Request Cancellation with AbortController 🛑
+
+For commercial applications, you often need to cancel requests when users navigate away or implement timeouts. Z fully supports AbortController!
+
+### Basic Usage
+
+```typescript
+const z = new Z("https://api.example.com");
+const controller = new AbortController();
+
+// Cancel on button click
+document.getElementById("cancel-btn").addEventListener("click", () => {
+  controller.abort();
+});
+
+try {
+  const result = await z.get("/slow-endpoint", { signal: controller.signal });
+  console.log(result.data);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('Request was cancelled!');
+  }
+}
+```
+
+### Setting Timeouts
+
+```typescript
+import Z, { createTimeout } from "@ptt/zz";
+
+const z = new Z("https://api.example.com");
+
+// 5-second timeout
+const controller = createTimeout(5000);
+
+try {
+  const result = await z.get("/slow-endpoint", { signal: controller.signal });
+  console.log(result.data);
+} catch (error) {
+  if (error.name === 'AbortError') {
+    console.log('Request timed out!');
+  }
+}
+```
+
+### Real-world Example: React Usage
+
+```typescript
+import { useEffect, useState } from 'react';
+import Z from '@ptt/zz';
+
+function UserProfile({ userId }: { userId: number }) {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const z = new Z("https://api.example.com");
+    const controller = new AbortController();
+
+    async function fetchUser() {
+      try {
+        const { data } = await z.get(`/users/${userId}`, { 
+          signal: controller.signal 
+        });
+        setUser(data);
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          console.error('Failed to fetch user:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUser();
+
+    // Cancel request when component unmounts
+    return () => controller.abort();
+  }, [userId]);
+
+  if (loading) return <div>Loading...</div>;
+  return <div>{user?.name}</div>;
+}
+```
+
+## Why Choose Z? 🌟
+
+- **Simple**: Minimal API surface - almost zero learning curve!
+- **Type-safe**: Leverage TypeScript's full power for API response types
+- **Lightweight**: No external dependencies means smaller bundle size
+- **Modern**: Built on JavaScript's Fetch API for optimal browser support
+- **Production-ready**: AbortController support for commercial applications
+
+### Comparison with fetch / axios 📊
+
+#### vs Native Fetch API
+
+| Feature | Native Fetch | Z |
+|---------|-------------|---|
+| **Base URL** | ❌ Must write full URL every time | ✅ Set once in constructor |
+| **Default Headers** | ❌ Must set for each request | ✅ Set once in constructor |
+| **JSON Handling** | ❌ Manual `JSON.stringify()` / `.json()` | ✅ Automatic |
+| **Type Safety** | ❌ Response type is any | ✅ Full type safety with generics |
+| **Error Handling** | ❌ Must check `.ok` every time | ✅ Automatically throws on error |
+| **Bundle Size** | ✅ 0KB (standard API) | ✅ ~1KB (minimal) |
+
+```typescript
+// With Fetch 😫
+const response = await fetch('https://api.example.com/users/1', {
+  headers: {
+    'Authorization': 'Bearer token',
+    'Content-Type': 'application/json'
+  }
+});
+if (!response.ok) {
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+const user = await response.json();
+
+// With Z 😊
+const z = new Z('https://api.example.com', {
+  headers: { 'Authorization': 'Bearer token' }
+});
+const { data: user } = await z.get<User>('/users/1');
+```
+
+#### vs Axios
+
+| Feature | Axios | Z |
+|---------|-------|---|
+| **Bundle Size** | ❌ ~13KB (gzipped) | ✅ ~1KB |
+| **Dependencies** | ❌ Multiple dependencies | ✅ Zero dependencies |
+| **Browser Support** | ✅ Wide support (including IE11) | ✅ Modern browsers (Fetch API required) |
+| **TypeScript Support** | ⚠️ Requires type definitions | ✅ Native TypeScript |
+| **AbortController** | ✅ Supported | ✅ Native support |
+| **Interceptors** | ✅ Request/Response interceptors | ❌ None (simplicity first) |
+| **Progress Events** | ✅ Upload/Download progress | ❌ None (simplicity first) |
+| **Auto Retry** | ❌ Requires plugin | ❌ None (implement if needed) |
+
+**Z is best when you need:**
+- 🎯 **Simple REST API client** without complexity
+- 📦 **Minimal bundle size** for better performance
+- 🚀 **Modern browser-only** applications
+- ✨ **Type safety** with TypeScript
+- 🪶 **Zero dependencies** in your project
+
+**Axios is best when you need:**
+- 🔧 **Advanced features** (interceptors, progress tracking)
+- 🌐 **Old browser support** (IE11, etc.)
+- 📊 **Complex request processing** with transformations
+
+## API Reference 📚
+
+### Constructor
+
+```typescript
+new Z(baseUrl?: string, options?: RequestInit)
+```
+
+- `baseUrl`: Base URL for all requests (e.g., "https://api.example.com")
+- `options`: Default Fetch options applied to all requests
+
+### Methods
+
+All methods support the `signal` option for request cancellation via AbortController.
+
+#### `get<T>(url: string, options?: RequestInit): Promise<response<T>>`
+
+Execute a GET request.
+
+#### `post<T>(url: string, body?: any, options?: RequestInit): Promise<response<T>>`
+
+Execute a POST request with JSON body.
+
+#### `put<T>(url: string, body?: any, options?: RequestInit): Promise<response<T>>`
+
+Execute a PUT request with JSON body.
+
+#### `patch<T>(url: string, body?: any, options?: RequestInit): Promise<response<T>>`
+
+Execute a PATCH request with JSON body.
+
+#### `delete<T>(url: string, options?: RequestInit): Promise<response<T>>`
+
+Execute a DELETE request.
+
+### Helper Functions
+
+#### `createTimeout(timeoutMs: number): AbortController`
+
+Creates an AbortController that automatically aborts after the specified timeout.
+
+```typescript
+const controller = createTimeout(5000); // 5 seconds
+await z.get("/endpoint", { signal: controller.signal });
+```
+
+## Error Handling
+
+```typescript
+try {
+  await z.get("/not-found");
+} catch (error) {
+  console.error("Error occurred!", error.message);
+}
+```
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Check out the [GitHub repository](https://github.com/linkalls/z).

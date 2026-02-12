@@ -2,6 +2,9 @@
  * Zクラスは、JSON APIとの通信に特化したHTTPクライアントクラスです。
  * このクラスは、JSON形式のリクエストとレスポンスのみをサポートし、
  * TypeScriptの型システムを活用して型安全な通信を実現します。
+ * 
+ * AbortControllerをサポートし、商用利用に適したリクエストのキャンセル機能を提供します。
+ * Supports AbortController for commercial-grade request cancellation.
  *
  * @example
  * ```typescript
@@ -19,6 +22,18 @@
  *   name: "John Doe",
  *   email: "john@example.com"
  * });
+ * 
+ * // AbortController support for cancellable requests
+ * const controller = new AbortController();
+ * setTimeout(() => controller.abort(), 5000);
+ * 
+ * try {
+ *   const result = await api.get("/slow-endpoint", { signal: controller.signal });
+ * } catch (error) {
+ *   if (error.name === 'AbortError') {
+ *     console.log('Request was cancelled');
+ *   }
+ * }
  * ```
  */
 export default class Z {
@@ -40,11 +55,12 @@ export default class Z {
    * JSONデータを取得するGETリクエストを実行します。
    * @template T - レスポンスデータの型
    * @param url - リクエストパス（ベースURLからの相対パス）
-   * @param options - オプションのFetchリクエスト設定
+   * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
    * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
    * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+   * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
    */
-  async get<T>(url: string, options = {}): Promise<response<T>> {
+  async get<T>(url: string, options: RequestInit = {}): Promise<response<T>> {
     return await this.request<T>(url, {
       method: "GET",
       ...options,
@@ -56,11 +72,12 @@ export default class Z {
    * @template T - レスポンスデータの型
    * @param url - リクエストパス（ベースURLからの相対パス）
    * @param body - JSONとして送信するデータ
-   * @param options - オプションのFetchリクエスト設定
+   * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
    * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
    * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+   * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
    */
-  async post<T>(url: string, body = {}, options = {}): Promise<response<T>> {
+  async post<T>(url: string, body = {}, options: RequestInit = {}): Promise<response<T>> {
     return await this.request<T>(url, {
       method: "POST",
       headers: {
@@ -76,11 +93,12 @@ export default class Z {
    * @template T - レスポンスデータの型
    * @param url - リクエストパス（ベースURLからの相対パス）
    * @param body - JSONとして送信するデータ
-   * @param options - オプションのFetchリクエスト設定
+   * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
    * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
    * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+   * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
    */
-  async put<T>(url: string, body = {}, options = {}): Promise<response<T>> {
+  async put<T>(url: string, body = {}, options: RequestInit = {}): Promise<response<T>> {
     return await this.request<T>(url, {
       method: "PUT",
       headers: {
@@ -95,11 +113,12 @@ export default class Z {
    * 指定されたリソースを削除するDELETEリクエストを実行します。
    * @template T - レスポンスデータの型
    * @param url - リクエストパス（ベースURLからの相対パス）
-   * @param options - オプションのFetchリクエスト設定
+   * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
    * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
    * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+   * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
    */
-  async delete<T>(url: string, options = {}): Promise<response<T>> {
+  async delete<T>(url: string, options: RequestInit = {}): Promise<response<T>> {
     return await this.request<T>(url, {
       method: "DELETE",
       ...options,
@@ -111,11 +130,12 @@ export default class Z {
    * @template T - レスポンスデータの型
    * @param url - リクエストパス（ベースURLからの相対パス）
    * @param body - JSONとして送信するデータ
-   * @param options - オプションのFetchリクエスト設定
+   * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
    * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
    * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+   * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
    */
-  async patch<T>(url: string, body = {}, options = {}): Promise<response<T>> {
+  async patch<T>(url: string, body = {}, options: RequestInit = {}): Promise<response<T>> {
     return await this.request<T>(url, {
       method: "PATCH",
       headers: {
@@ -176,4 +196,32 @@ function responseMaker<T>(data: T, response: Response): response<T> {
     data: data,
     response: response,
   };
+}
+
+/**
+ * タイムアウト付きのAbortControllerを作成するヘルパー関数
+ * Creates an AbortController with automatic timeout for commercial-grade request handling
+ * 
+ * @param timeoutMs - タイムアウト時間（ミリ秒）
+ * @returns AbortController インスタンス
+ * 
+ * @example
+ * ```typescript
+ * const z = new Z("https://api.example.com");
+ * const controller = createTimeout(5000); // 5秒でタイムアウト
+ * 
+ * try {
+ *   const result = await z.get("/slow-endpoint", { signal: controller.signal });
+ *   console.log(result.data);
+ * } catch (error) {
+ *   if (error.name === 'AbortError') {
+ *     console.log('リクエストがタイムアウトしました');
+ *   }
+ * }
+ * ```
+ */
+export function createTimeout(timeoutMs: number): AbortController {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), timeoutMs);
+  return controller;
 }

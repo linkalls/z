@@ -1,6 +1,6 @@
-import { Z } from "../dist/main.js"
+import Z from "../dist/main.js"
 async function fetchData() {
-  const z = new Z("https://jsonplaceholder.typicode.com", { header: { "Content-Type": "application/json" } })
+  const z = new Z("https://jsonplaceholder.typicode.com", { headers: { "Content-Type": "application/json" } })
   const result = await z.get("/todos/1")
   // console.log(result.data.title)
   // const { data: { title } } = await z.get("/todos/1")

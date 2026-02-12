@@ -2,7 +2,7 @@ import {
   assertEquals,
   assertThrowsAsync,
 } from "https://deno.land/std@0.106.0/testing/asserts.ts";
-import  Z  from "./main.ts";
+import  Z, { createTimeout }  from "./main.ts";
 
 // モックフェッチ関数の定義
 const mockFetch = (response: any, options: { ok?: boolean; status?: number; statusText?: string } = {}) => {
@@ -148,3 +148,102 @@ Deno.test("レスポンスの型チェック", async () => {
   const result = await z.get<{ title: string }>("/todos/1");
   assertEquals(typeof result.data?.title, "string");
 });
+
+// AbortController のテスト
+Deno.test("AbortController - リクエストをキャンセル", async () => {
+  const z = new Z("https://jsonplaceholder.typicode.com");
+  const controller = new AbortController();
+  
+  // フェッチをモック化して、AbortErrorを投げる
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    // シグナルがあり、既に中止されている場合はエラーを投げる
+    if (init?.signal && (init.signal as AbortSignal).aborted) {
+      const error = new Error("The operation was aborted");
+      error.name = "AbortError";
+      throw error;
+    }
+    throw new Error("Should have been aborted");
+  };
+
+  // リクエストの前にキャンセル
+  controller.abort();
+
+  await assertThrowsAsync(
+    async () => {
+      await z.get("/todos/1", { signal: controller.signal });
+    },
+    Error,
+    "AbortError"
+  );
+});
+
+Deno.test("AbortController - タイムアウト機能", async () => {
+  const z = new Z("https://jsonplaceholder.typicode.com");
+  const controller = new AbortController();
+  
+  // 100ms後にキャンセル
+  setTimeout(() => controller.abort(), 100);
+  
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    // 長い遅延をシミュレート
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ data: "test" }),
+    } as Response;
+  };
+
+  await assertThrowsAsync(
+    async () => {
+      await z.get("/slow-endpoint", { signal: controller.signal });
+    },
+    Error
+  );
+});
+
+Deno.test("AbortController - 正常なリクエストは影響を受けない", async () => {
+  const z = new Z("https://jsonplaceholder.typicode.com");
+  const controller = new AbortController();
+  const mockResponse = { title: "mock title" };
+  mockFetch(mockResponse);
+
+  // キャンセルせずにリクエスト
+  const result = await z.get<typeof mockResponse>("/todos/1", { signal: controller.signal });
+  assertEquals(result.data, mockResponse);
+});
+
+// createTimeout ヘルパー関数のテスト
+Deno.test("createTimeout - タイムアウト付きAbortControllerの作成", async () => {
+  const controller = createTimeout(100);
+  
+  // AbortControllerインスタンスであることを確認
+  assertEquals(controller instanceof AbortController, true);
+  assertEquals(controller.signal.aborted, false);
+  
+  // タイムアウト後にabortされることを確認
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assertEquals(controller.signal.aborted, true);
+});
+
+Deno.test("createTimeout - Zクラスとの統合", async () => {
+  const z = new Z("https://jsonplaceholder.typicode.com");
+  const controller = createTimeout(50);
+  
+  globalThis.fetch = async () => {
+    // 長い遅延をシミュレート
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return {
+      ok: true,
+      json: async () => ({ data: "test" }),
+    } as Response;
+  };
+
+  await assertThrowsAsync(
+    async () => {
+      await z.get("/slow-endpoint", { signal: controller.signal });
+    },
+    Error
+  );
+});
+
