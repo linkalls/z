@@ -1,23 +1,62 @@
 /**
- * Zクラスは、Fetch APIを使用してHTTPリクエストを行うためのユーティリティクラスです。
+ * Zクラスは、JSON APIとの通信に特化したHTTPクライアントクラスです。
+ * このクラスは、JSON形式のリクエストとレスポンスのみをサポートし、
+ * TypeScriptの型システムを活用して型安全な通信を実現します。
+ *
+ * AbortControllerをサポートし、商用利用に適したリクエストのキャンセル機能を提供します。
+ * Supports AbortController for commercial-grade request cancellation.
+ *
+ * @example
+ * ```typescript
+ * const api = new Z("https://api.example.com");
+ *
+ * // GET request
+ * const response = await api.get<{ id: number; name: string }>("/users/1");
+ * console.log(response.data.name);
+ *
+ * // POST request with type checking
+ * type CreateUser = { name: string; email: string };
+ * type UserResponse = { id: number } & CreateUser;
+ *
+ * const newUser = await api.post<UserResponse, CreateUser>("/users", {
+ *   name: "John Doe",
+ *   email: "john@example.com"
+ * });
+ *
+ * // AbortController support for cancellable requests
+ * const controller = new AbortController();
+ * setTimeout(() => controller.abort(), 5000);
+ *
+ * try {
+ *   const result = await api.get("/slow-endpoint", { signal: controller.signal });
+ * } catch (error) {
+ *   if (error.name === 'AbortError') {
+ *     console.log('Request was cancelled');
+ *   }
+ * }
+ * ```
  */
-export class Z {
+export default class Z {
     baseUrl;
     options;
     /**
-     * コンストラクタ
-     * @param baseUrl ベースURL
-     * @param options リクエストオプション
+     * Zクラスのインスタンスを作成します。
+     * @param baseUrl - APIのベースURL（例: "https://api.example.com"）
+     * @param options - オプションのFetchリクエスト設定
+     * @throws {TypeError} 無効なURLが指定された場合
      */
     constructor(baseUrl = "", options = {}) {
         this.baseUrl = new URL(baseUrl);
         this.options = options;
     }
     /**
-     * GETリクエストを行います。
-     * @param url リクエストURL
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * JSONデータを取得するGETリクエストを実行します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
      */
     async get(url, options = {}) {
         return await this.request(url, {
@@ -26,11 +65,14 @@ export class Z {
         });
     }
     /**
-     * POSTリクエストを行います。
-     * @param url リクエストURL
-     * @param body リクエストボディ
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * JSONデータを送信するPOSTリクエストを実行します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param body - JSONとして送信するデータ
+     * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
      */
     async post(url, body = {}, options = {}) {
         return await this.request(url, {
@@ -43,11 +85,14 @@ export class Z {
         });
     }
     /**
-     * PUTリクエストを行います。
-     * @param url リクエストURL
-     * @param body リクエストボディ
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * JSONデータで既存のリソースを更新するPUTリクエストを実行します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param body - JSONとして送信するデータ
+     * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
      */
     async put(url, body = {}, options = {}) {
         return await this.request(url, {
@@ -60,10 +105,13 @@ export class Z {
         });
     }
     /**
-     * DELETEリクエストを行います。
-     * @param url リクエストURL
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * 指定されたリソースを削除するDELETEリクエストを実行します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
      */
     async delete(url, options = {}) {
         return await this.request(url, {
@@ -72,11 +120,14 @@ export class Z {
         });
     }
     /**
-     * PATCHリクエストを行います。
-     * @param url リクエストURL
-     * @param body リクエストボディ
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * リソースの一部を更新するPATCHリクエストを実行します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param body - JSONとして送信するデータ
+     * @param options - オプションのFetchリクエスト設定（signal: AbortSignalを含む）
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @throws {DOMException} リクエストがAbortControllerによってキャンセルされた場合
      */
     async patch(url, body = {}, options = {}) {
         return await this.request(url, {
@@ -89,23 +140,31 @@ export class Z {
         });
     }
     /**
-     * HTTPリクエストを行います。
-     * @param url リクエストURL
-     * @param options リクエストオプション
-     * @returns レスポンスデータ
+     * 汎用的なHTTPリクエストを実行します。このメソッドは常にJSONデータを送受信します。
+     * @template T - レスポンスデータの型
+     * @param url - リクエストパス（ベースURLからの相対パス）
+     * @param options - Fetchリクエスト設定
+     * @returns Promise<response<T>> - レスポンスデータとメタ情報を含むオブジェクト
+     * @throws {Error} ネットワークエラーまたはサーバーエラーが発生した場合
+     * @private
      */
     async request(url, options = {}) {
         const result = await fetch(new URL(url, this.baseUrl).toString(), {
             ...this.options,
             ...options,
         });
-        if (result.ok) {
-            const res = responseMaker(await result.json(), result);
-            return res;
+        const responseData = await result.json();
+        if (!result.ok) {
+            throw new Error(`Request failed with status ${result.status}: ${JSON.stringify(responseData)}`);
         }
-        else {
-            throw new Error(`Request failed with status ${result.status}: ${await result.text()}`);
-        }
+        // パターン1: 分割代入を使用した短縮形
+        // return { data: responseData, response: result };
+        // パターン2: 明示的なオブジェクト作成
+        const response = {
+            data: responseData,
+            response: result,
+        };
+        return response;
     }
 }
 function responseMaker(data, response) {
@@ -113,5 +172,32 @@ function responseMaker(data, response) {
         data: data,
         response: response,
     };
+}
+/**
+ * タイムアウト付きのAbortControllerを作成するヘルパー関数
+ * Creates an AbortController with automatic timeout for commercial-grade request handling
+ *
+ * @param timeoutMs - タイムアウト時間（ミリ秒）
+ * @returns AbortController インスタンス
+ *
+ * @example
+ * ```typescript
+ * const z = new Z("https://api.example.com");
+ * const controller = createTimeout(5000); // 5秒でタイムアウト
+ *
+ * try {
+ *   const result = await z.get("/slow-endpoint", { signal: controller.signal });
+ *   console.log(result.data);
+ * } catch (error) {
+ *   if (error.name === 'AbortError') {
+ *     console.log('リクエストがタイムアウトしました');
+ *   }
+ * }
+ * ```
+ */
+export function createTimeout(timeoutMs) {
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(), timeoutMs);
+    return controller;
 }
 //# sourceMappingURL=main.js.map
