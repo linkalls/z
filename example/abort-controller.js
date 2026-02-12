@@ -1,4 +1,4 @@
-import { Z, createTimeout } from "../dist/main.js"
+import Z, { createTimeout } from "../dist/main.js"
 
 // Example 1: Basic AbortController usage
 async function basicAbortExample() {
